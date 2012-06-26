@@ -32,6 +32,11 @@ import (
 	"sync"
 )
 
+// returns the current version
+func Version() string {
+	return "0.1"
+}
+
 // internal mapping of event names to observing channels
 var events = make(map[string][]chan interface{})
 
