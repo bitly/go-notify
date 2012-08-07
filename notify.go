@@ -34,7 +34,7 @@ import (
 
 // returns the current version
 func Version() string {
-	return "0.1"
+	return "0.2"
 }
 
 // internal mapping of event names to observing channels
