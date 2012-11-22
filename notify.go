@@ -33,6 +33,8 @@ import (
 	"time"
 )
 
+const E_NOT_FOUND = "E_NOT_FOUND"
+
 // returns the current version
 func Version() string {
 	return "0.2"
@@ -58,10 +60,11 @@ func Stop(event string, outputChan chan interface{}) error {
 	defer rwMutex.Unlock()
 
 	newArray := make([]chan interface{}, 0)
-	if _, ok := events[event]; !ok {
-		return errors.New("E_NOT_FOUND")
+	outChans, ok := events[event]
+	if !ok {
+		return errors.New(E_NOT_FOUND)
 	}
-	for _, ch := range events[event] {
+	for _, ch := range outChans {
 		if ch != outputChan {
 			newArray = append(newArray, ch)
 		} else {
@@ -78,10 +81,11 @@ func Post(event string, data interface{}) error {
 	rwMutex.RLock()
 	defer rwMutex.RUnlock()
 
-	if _, ok := events[event]; !ok {
-		return errors.New("E_NOT_FOUND")
+	outChans, ok := events[event]
+	if !ok {
+		return errors.New(E_NOT_FOUND)
 	}
-	for _, outputChan := range events[event] {
+	for _, outputChan := range outChans {
 		outputChan <- data
 	}
 
@@ -94,10 +98,11 @@ func PostTimeout(event string, data interface{}, timeout time.Duration) error {
 	rwMutex.RLock()
 	defer rwMutex.RUnlock()
 
-	if _, ok := events[event]; !ok {
-		return errors.New("E_NOT_FOUND")
+	outChans, ok := events[event]
+	if !ok {
+		return errors.New(E_NOT_FOUND)
 	}
-	for _, outputChan := range events[event] {
+	for _, outputChan := range outChans {
 		select {
 		case outputChan <- data:
 		case <-time.After(timeout):
