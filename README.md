@@ -44,5 +44,8 @@ Example:
     func Stop(event string, outputChan chan interface{}) error
         Stop observing the specified event on the provided output channel
 
+    func StopAll(event string) error
+        Stop observing the specified event on all channels
+
     func Version() string
         returns the current version

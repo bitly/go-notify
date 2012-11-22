@@ -76,6 +76,23 @@ func Stop(event string, outputChan chan interface{}) error {
 	return nil
 }
 
+// Stop observing the specified event on all channels
+func StopAll(event string) error {
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
+
+	outChans, ok := events[event]
+	if !ok {
+		return errors.New(E_NOT_FOUND)
+	}
+	for _, ch := range outChans {
+		close(ch)
+	}
+	delete(events, event)
+
+	return nil
+}
+
 // Post a notification (arbitrary data) to the specified event
 func Post(event string, data interface{}) error {
 	rwMutex.RLock()
