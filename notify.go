@@ -1,9 +1,9 @@
-// Package notify enables independent components of an application to 
+// Package notify enables independent components of an application to
 // observe notable events in a decoupled fashion.
 //
-// It generalizes the pattern of *multiple* consumers of an event (ie: 
-// the same message delivered to multiple channels) and obviates the need 
-// for components to have intimate knowledge of each other (only `import notify` 
+// It generalizes the pattern of *multiple* consumers of an event (ie:
+// the same message delivered to multiple channels) and obviates the need
+// for components to have intimate knowledge of each other (only `import notify`
 // and the name of the event are shared).
 //
 // Example:
@@ -14,7 +14,7 @@
 //             notify.Post("my_event", time.Now().Unix())
 //         }
 //     }()
-//     
+//
 //     // observer of "my_event" (normally some independent component that
 //     // needs to be notified when "my_event" occurs)
 //     myEventChan := make(chan interface{})
@@ -30,6 +30,7 @@ package notify
 import (
 	"errors"
 	"sync"
+	"time"
 )
 
 // returns the current version
@@ -82,6 +83,25 @@ func Post(event string, data interface{}) error {
 	}
 	for _, outputChan := range events[event] {
 		outputChan <- data
+	}
+
+	return nil
+}
+
+// Post a notification to the specified event using the provided timeout for
+// any output channels that are blocking
+func PostTimeout(event string, data interface{}, timeout time.Duration) error {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
+
+	if _, ok := events[event]; !ok {
+		return errors.New("E_NOT_FOUND")
+	}
+	for _, outputChan := range events[event] {
+		select {
+		case outputChan <- data:
+		case <-time.After(timeout):
+		}
 	}
 
 	return nil

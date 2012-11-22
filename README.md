@@ -34,6 +34,10 @@ Example:
     func Post(event string, data interface{}) error
         Post a notification (arbitrary data) to the specified event
 
+    func PostTimeout(event string, data interface{}, timeout time.Duration) error
+        Post a notification to the specified event using the provided timeout for
+        any output channels that are blocking
+
     func Start(event string, outputChan chan interface{})
         Start observing the specified event via provided output channel
 
