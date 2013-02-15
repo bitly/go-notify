@@ -1,9 +1,9 @@
-// Package notify enables independent components of an application to 
+// Package notify enables independent components of an application to
 // observe notable events in a decoupled fashion.
 //
-// It generalizes the pattern of *multiple* consumers of an event (ie: 
-// the same message delivered to multiple channels) and obviates the need 
-// for components to have intimate knowledge of each other (only `import notify` 
+// It generalizes the pattern of *multiple* consumers of an event (ie:
+// the same message delivered to multiple channels) and obviates the need
+// for components to have intimate knowledge of each other (only `import notify`
 // and the name of the event are shared).
 //
 // Example:
@@ -14,7 +14,7 @@
 //             notify.Post("my_event", time.Now().Unix())
 //         }
 //     }()
-//     
+//
 //     // observer of "my_event" (normally some independent component that
 //     // needs to be notified when "my_event" occurs)
 //     myEventChan := make(chan interface{})
@@ -30,7 +30,10 @@ package notify
 import (
 	"errors"
 	"sync"
+	"time"
 )
+
+const E_NOT_FOUND = "E_NOT_FOUND"
 
 // returns the current version
 func Version() string {
@@ -57,10 +60,11 @@ func Stop(event string, outputChan chan interface{}) error {
 	defer rwMutex.Unlock()
 
 	newArray := make([]chan interface{}, 0)
-	if _, ok := events[event]; !ok {
-		return errors.New("E_NOT_FOUND")
+	outChans, ok := events[event]
+	if !ok {
+		return errors.New(E_NOT_FOUND)
 	}
-	for _, ch := range events[event] {
+	for _, ch := range outChans {
 		if ch != outputChan {
 			newArray = append(newArray, ch)
 		} else {
@@ -72,16 +76,54 @@ func Stop(event string, outputChan chan interface{}) error {
 	return nil
 }
 
+// Stop observing the specified event on all channels
+func StopAll(event string) error {
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
+
+	outChans, ok := events[event]
+	if !ok {
+		return errors.New(E_NOT_FOUND)
+	}
+	for _, ch := range outChans {
+		close(ch)
+	}
+	delete(events, event)
+
+	return nil
+}
+
 // Post a notification (arbitrary data) to the specified event
 func Post(event string, data interface{}) error {
 	rwMutex.RLock()
 	defer rwMutex.RUnlock()
 
-	if _, ok := events[event]; !ok {
-		return errors.New("E_NOT_FOUND")
+	outChans, ok := events[event]
+	if !ok {
+		return errors.New(E_NOT_FOUND)
 	}
-	for _, outputChan := range events[event] {
+	for _, outputChan := range outChans {
 		outputChan <- data
+	}
+
+	return nil
+}
+
+// Post a notification to the specified event using the provided timeout for
+// any output channels that are blocking
+func PostTimeout(event string, data interface{}, timeout time.Duration) error {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
+
+	outChans, ok := events[event]
+	if !ok {
+		return errors.New(E_NOT_FOUND)
+	}
+	for _, outputChan := range outChans {
+		select {
+		case outputChan <- data:
+		case <-time.After(timeout):
+		}
 	}
 
 	return nil
